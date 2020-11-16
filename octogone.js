@@ -7,6 +7,11 @@ class Octogone {
         this.id = _id;
         this.turn = false;
     }
+
+    changeTurn() {
+        this.turn = !this.turn;
+        console.log("Tour changé");
+    }
 }
 
 module.exports = Octogone;

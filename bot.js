@@ -11,7 +11,7 @@ let octogone_auto_id = 0;
 const tabOctogone = [];
 const tabFighter = [];
 
-client.on('ready', async () => {
+client.on('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
 });
 
@@ -76,9 +76,19 @@ client.on('message', msg => {
             break;
             
         case "register":
-            if(!tabFighter.find(fighter => fighter.fighterName == tabArgs[1])){
+            if (fighterExist(msg.author.id)) {
+                msg.reply("Vous avez déja un combattant connard !");
+                return;
+            }
+            let regex = /"[\S ]+"/;
+            let result = regex.exec(msg.content);
+            result[0] = result[0].replace(/\"/g, "");
+            console.log(result[0]);
+            if (!result) {
+                msg.reply("Vous n'avez rentré aucun nom de combattant !");
+            } else if (!tabFighter.find(fighter => fighter.fighterName == result[0])) {
                 console.log("Création d'un nouveau combattant");
-                const newFighter = new Fighter(tabArgs[1], msg.author.id);
+                const newFighter = new Fighter(result[0], msg.author.id);
                 tabFighter.push(newFighter);
                 msg.channel.send(`Un nouveau combatant s'est préparé ! Bienvenue à ${newFighter.fighterName}.`);
                 console.log(newFighter);
@@ -103,15 +113,6 @@ client.on('message', msg => {
                 myLeaderboard += `${element.fighterName} Victoires : ${element.victory}\n`;
             });
             msg.channel.send(myLeaderboard);
-        
-        break;
-
-        case "test":
-            let myFighter = getFighterById(msg.author.id);
-            let cloneFighter = JSON.parse(JSON.stringify(myFighter));
-            myFighter.fighterName = "Clone de Dupy";
-            myFighter.PV += 10;
-            console.log(cloneFighter)
 
         break;
     }
@@ -139,15 +140,18 @@ function startFight(channel, octogone)
         }
 
         // creation des shallow clone
-        let cloneFighter1 = JSON.parse(JSON.stringify(octogone.fighter1));
-        let cloneFighter2 = JSON.parse(JSON.stringify(octogone.fighter2));
+        let cloneFighter1 = Object.assign({}, octogone.fighter1);
+        let cloneFighter2 = Object.assign({}, octogone.fighter2);
+        console.log(cloneFighter1);
+        console.log("--------");
+        console.log(cloneFighter2);
 
         let fightCollector = message.createReactionCollector(filter);
         
         fightCollector.on("collect", (reaction, user) => {
             
-            let target = octogone.turn ? octogone.fighter2 : octogone.fighter1;
-            let attacker = octogone.turn ? octogone.fighter1 : octogone.fighter2;
+            let target = octogone.turn ? cloneFighter2 : cloneFighter1;
+            let attacker = octogone.turn ? cloneFighter1 : cloneFighter2;
             let lastAction = "";
             //switch reaction
             
@@ -168,40 +172,43 @@ function startFight(channel, octogone)
 
             
             //Check condition de victoire
-            if (octogone.fighter1.PV <= 0) {
-                fightCollector.stop(`Oyé! Oyé! ${octogone.fighter2.fighterName} à gagné ! Il a bolossé ${octogone.fighter1.fighterName}.`);
-                octogone.fighter2.victory ++;
-            } else if (octogone.fighter2.PV <= 0) {
-                fightCollector.stop(`Oyé! Oyé! ${octogone.fighter1.fighterName} à gagné ! Il a bolossé ${octogone.fighter2.fighterName}.`);
-                octogone.fighter1.victory ++;
+            if (cloneFighter1.PV <= 0) {
+                fightCollector.stop(`Oyé! Oyé! ${cloneFighter2.fighterName} à gagné ! Il a bolossé ${cloneFighter1.fighterName}.`);
+                octogone.fighter2.victory++;
+            } else if (cloneFighter2.PV <= 0) {
+                fightCollector.stop(`Oyé! Oyé! ${cloneFighter1.fighterName} à gagné ! Il a bolossé ${cloneFighter2.fighterName}.`);
+                octogone.fighter1.victory++;
             }
             else {
                 octogone.changeTurn();
-                editFightMessage(message, octogone, lastAction);
+                editFightMessage(message, cloneFighter1, cloneFighter2, lastAction);
             }
         });
 
         fightCollector.on("end", (collected, reason) => {
             channel.send(reason);
             //ICI
-            editFightMessage(message, octogone, reason);
-            resetFighter(octogone);
+            editFightMessage(message, cloneFighter1, cloneFighter2, reason);
+            // resetFighter(octogone);
         });
     })
 }
 
-function editFightMessage(message, octogone, lastAction)
+function editFightMessage(message, f1, f2, lastAction)
 {
+    console.log(f1);
+    console.log("-----------");
+    console.log(f2);
     let newMessage = "Combat en cours ...\n" +
-        `${octogone.fighter1.fighterName} : ${octogone.fighter1.PV} / ${octogone.fighter1.PvMax} \n` +
-        `${octogone.fighter2.fighterName} : ${octogone.fighter2.PV} / ${octogone.fighter2.PvMax} \n` +
+        `${f1.fighterName} : ${f1.PV} / ${f1.PvMax} \n` +
+        `${f2.fighterName} : ${f2.PV} / ${f2.PvMax} \n` +
     "Derniere action : " + lastAction;
     message.edit(newMessage);
 } 
 
 function resetFighter(octogone) {
-    octogone.fighter1.PV = octogone.fighter1.PvMax;
-    octogone.fighter2.PV = octogone.fighter2.PvMax;
+    octogone.fighter1.PV = cloneFighter1.PvMax;
+    octogone.fighter2.PV = cloneFighter2.PvMax;
 }
 
 
